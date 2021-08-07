@@ -170,57 +170,48 @@ namespace KmsStd {
 
     /* ////////////////////////////// extending ////////////////////////////// */
     namespace ext {
-        enum { lft, rht };
-        //this calss may be unsafe 
-        class BTnode {
+        enum { LEFT, RIGHT };
+        //Modified binary tree node | this class is unsafe to use freely. check the conditions to make functions work normally.
+        class MBTnode {
         public:
             char data;
-            BTnode* left;
-            BTnode* right;
-            BTnode* top;
+            //lft node's code = this node's code + '0'
+            MBTnode* lft;
+            //rht node's code = this node;s code + '1'
+            MBTnode* rht;
+            MBTnode* top;
 
-            BTnode(BTnode* left = nullptr, BTnode* right = nullptr, BTnode* top = nullptr) {
-                this->data = 0x0;
-                this->left = left;
-                this->right = right;
-                this->top = top;
-            }
-            BTnode(char data, BTnode* left = nullptr, BTnode* right = nullptr, BTnode* top = nullptr) {
+            MBTnode(char data = 0x0, MBTnode* top = nullptr, MBTnode* left = nullptr, MBTnode* right = nullptr) {
                 this->data = data;
-                this->left = left;
-                this->right = right;
+                this->lft = left;
+                this->rht = right;
                 this->top = top;
             }
-            ~BTnode() {
-                if (this->left != nullptr) { delete(this->left); }
-                if (this->left != nullptr) { delete(this->right); }
+
+            ~MBTnode() {
+                if (this->lft != nullptr) { delete(this->lft); }
+                if (this->rht != nullptr) { delete(this->rht); }
             }
 
-            void BTnode_con_unsafe(int dir, char V = 0x0) {
-                BTnode* lt = new BTnode;
-                if (dir == lft) {
-                    this->left = lt;
-                    this->left->data = V; //left code = this code + "0"
-                }
-                else {
-                    this->right = lt;
-                    this->right->data = V; //right code = this code + "1"
-                }
-                lt->top = this;
+            //modified binary tree node connectioon unsafe
+            void conU(int dir, char V = 0x0) {
+                MBTnode* lt = new MBTnode(V, this);
+                if (dir == LEFT) { this->lft = lt; }
+                else { this->rht = lt; }
             }
 
-            //are node's left and right filled?
+            //is node filled?
             bool isF(void) {
-                if ((this->left != nullptr) && (this->right != nullptr)) { return true; }
+                if ((this->lft != nullptr) && (this->rht != nullptr)) { return true; }
                 else { return false; }
             }
         };
 
-        //calculation 2 (cur and BTtree, fout must be initalized, opened)
-        void CLC1(const unsigned char IPI, BTnode*& cur, BTnode*& BTR, ofstream& fout, int cycle = 8) {
+        //calculation 1 (cur and BTR must be initalized and located at one modified binary tree. fout must be initalized, opened)
+        void CLC1(const unsigned char IPI, MBTnode*& cur, MBTnode*& BTR, ofstream& fout, int cycle = 8) {
             for (int i = 0; i < cycle; i++) {
-                if (IPI & (1 << i)) { cur = cur->right; }
-                else { cur = cur->left; }
+                if (IPI & (1 << i)) { cur = cur->rht; }
+                else { cur = cur->lft; }
 
                 if (cur->data) {
                     fout.put(cur->data);
@@ -230,7 +221,7 @@ namespace KmsStd {
         }
 
         //result file name, key file name, data file name
-        int extend(string RFN = "extended_file.txt", string DFN = "data") {
+        int extend(string RFN = "output.txt", string DFN = "data") {
             ifstream fin;
             ofstream fout;
 
@@ -239,8 +230,8 @@ namespace KmsStd {
             unsigned char SKF; //size of key file
             bool LVO; //logic valuable for optimization
 
-            BTnode* BTR = new BTnode; //binary tree root node
-            BTnode* cur = BTR; //
+            MBTnode* BTR = new MBTnode; //binary tree root node
+            MBTnode* cur = BTR; //current location of tree
             int DPT; //depth of tree
 
             unsigned char LFS; // last file size
@@ -261,21 +252,21 @@ namespace KmsStd {
                 for (LVO = cur->isF(); (DPT < (IHS - 1)) || LVO; LVO = cur->isF()) {
                     if (LVO) { cur = cur->top; DPT--; }
                     else {
-                        if (cur->left == nullptr) {
-                            cur->BTnode_con_unsafe(lft);
-                            cur = cur->left;
+                        if (cur->lft == nullptr) {
+                            cur->conU(LEFT);
+                            cur = cur->lft;
                         }
                         else {
-                            cur->BTnode_con_unsafe(rht);
-                            cur = cur->right;
+                            cur->conU(RIGHT);
+                            cur = cur->rht;
                         }
                         DPT++;
                     }
                     LVO = cur->isF();
                 }
 
-                if (cur->left == nullptr) { cur->BTnode_con_unsafe(lft, IPC); }
-                else { cur->BTnode_con_unsafe(rht, IPC); }
+                if (cur->lft == nullptr) { cur->conU(LEFT, IPC); }
+                else { cur->conU(RIGHT, IPC); }
             }
             cout << "read / construct Huffman code tree sucessfully" << endl;
 
@@ -322,8 +313,8 @@ int FNC1(int RST) {
 }
 
 int main() {
-    int INP, RST;
-    string FNM;
+    int INP, RST; //input, result status
+    string FNM; //file location + name + extention
 
     for (;;) {
         cout << "\n     [  compress : 1  |  extend : 2  |  auto compress & extend : 3  |  exit : 4  ]\n";
@@ -348,8 +339,12 @@ int main() {
         }
         else if (INP == 3) {
             RST = KmsStd::prs::press();
-            if (!FNC1(RST)) { RST = KmsStd::ext::extend(); }
-            FNC1(RST);
+            if (!FNC1(RST)) { 
+                cout << '\n'; //cout << endl;
+                RST = KmsStd::ext::extend(); 
+                FNC1(RST);
+            }
+            else { cout << "connot perform extending : fail to press input file\n"; }
         }
         else { break; }
     }
